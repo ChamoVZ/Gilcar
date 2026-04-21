@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
-from gilcar.services import AuthService
+from gilcar.services.auth_service import AuthService
 from gilcar.ui.menu_window import MenuWindow
 
 class LoginWindow(tk.Tk):
@@ -26,6 +26,9 @@ class LoginWindow(tk.Tk):
         self.entry_password.grid(row=1, column=1, padx=10, pady=8)
 
         tk.Button(self, text="Ingresar", width=18, command=self.on_login).pack(pady=14)
+
+       
+        self.bind("<Return>", lambda _e: self.on_login())
 
     def on_login(self):
         correo = self.entry_correo.get().strip()

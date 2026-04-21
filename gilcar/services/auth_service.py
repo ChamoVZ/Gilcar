@@ -1,4 +1,4 @@
-from gilcar.repositories import UsuariosRepo
+from gilcar.repositories.usuarios_repo import UsuariosRepo
 
 class AuthService:
     def __init__(self):

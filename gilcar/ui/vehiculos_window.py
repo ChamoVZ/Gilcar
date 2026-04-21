@@ -9,10 +9,11 @@ class VehiculosWindow(tk.Toplevel):
         self.id_seleccionado = None
 
         self.title("Gestión de Vehículos")
-        self.geometry("980x520")
+        self.geometry("1050x580")
 
         tk.Label(self, text="Gestión de Vehículos", font=("Arial", 16, "bold")).pack(pady=10)
 
+      
         form = tk.Frame(self)
         form.pack(pady=8)
 
@@ -25,6 +26,10 @@ class VehiculosWindow(tk.Toplevel):
         self._campo(form, "Color", 3, 0);        self.color = tk.Entry(form); self.color.grid(row=3, column=1)
         self._campo(form, "Precio", 3, 2);       self.precio = tk.Entry(form); self.precio.grid(row=3, column=3)
 
+        self._campo(form, "Descripción", 4, 0)
+        self.descripcion = tk.Entry(form, width=55)
+        self.descripcion.grid(row=4, column=1, columnspan=3, sticky="w", padx=2)
+
         botones = tk.Frame(self)
         botones.pack(pady=10)
         tk.Button(botones, text="Guardar", width=12, command=self.guardar).grid(row=0, column=0, padx=6)
@@ -32,12 +37,42 @@ class VehiculosWindow(tk.Toplevel):
         tk.Button(botones, text="Inactivar", width=12, command=self.inactivar).grid(row=0, column=2, padx=6)
         tk.Button(botones, text="Limpiar", width=12, command=self.limpiar).grid(row=0, column=3, padx=6)
 
+        ordenar_frame = tk.Frame(self)
+        ordenar_frame.pack(pady=6)
+
+        tk.Label(ordenar_frame, text="Ordenar por:").grid(row=0, column=0, padx=6)
+
+        self.cbo_campo = ttk.Combobox(
+            ordenar_frame,
+            values=["PRECIO", "ANO_FABRICACION", "KILOMETRAJE", "MARCA", "MODELO"],
+            state="readonly",
+            width=18
+        )
+        self.cbo_campo.grid(row=0, column=1, padx=6)
+        self.cbo_campo.set("PRECIO")
+
+        tk.Label(ordenar_frame, text="Dirección:").grid(row=0, column=2, padx=6)
+
+        self.cbo_dir = ttk.Combobox(
+            ordenar_frame,
+            values=["ASC", "DESC"],
+            state="readonly",
+            width=8
+        )
+        self.cbo_dir.grid(row=0, column=3, padx=6)
+        self.cbo_dir.set("DESC")
+
+        tk.Button(ordenar_frame, text="Aplicar orden", width=14, command=self.ordenar).grid(row=0, column=4, padx=6)
+        tk.Button(ordenar_frame, text="Ver disponibles", width=14, command=self.cargar_tabla).grid(row=0, column=5, padx=6)
+
+
         cols = ("ID", "Marca", "Modelo", "Año", "Tipo", "KM", "Combustible", "Color", "Precio")
         self.tabla = ttk.Treeview(self, columns=cols, show="headings", height=12)
         for c in cols:
             self.tabla.heading(c, text=c)
-            self.tabla.column(c, width=100)
+            self.tabla.column(c, width=110)
         self.tabla.pack(pady=10, fill="x", padx=10)
+
         self.tabla.bind("<<TreeviewSelect>>", self.seleccionar)
 
         self.cargar_tabla()
@@ -56,6 +91,7 @@ class VehiculosWindow(tk.Toplevel):
                 "combustible": self.comb.get().strip(),
                 "color": self.color.get().strip(),
                 "precio": float(self.precio.get().strip()),
+                "descripcion": self.descripcion.get().strip() if self.descripcion.get().strip() else None
             }
         except Exception:
             messagebox.showwarning("Validación", "Revisá Año/KM/Precio: deben ser numéricos.")
@@ -68,13 +104,36 @@ class VehiculosWindow(tk.Toplevel):
         return data
 
     def cargar_tabla(self):
+        """Lista DISPONIBLES (SP_LISTAR_DISPONIBLES)"""
         for x in self.tabla.get_children():
             self.tabla.delete(x)
-        for v in self.repo.listar_disponibles():
-            self.tabla.insert("", "end", values=(
-                v["id_vehiculo"], v["marca"], v["modelo"], v["anio"],
-                v["tipo"], v["km"], v["combustible"], v["color"], v["precio"]
-            ))
+
+        try:
+            for v in self.repo.listar_disponibles():
+                self.tabla.insert("", "end", values=(
+                    v["id_vehiculo"], v["marca"], v["modelo"], v["anio"],
+                    v["tipo"], v["km"], v["combustible"], v["color"], v["precio"]
+                ))
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo cargar la tabla.\n\nDetalle: {e}")
+
+    def ordenar(self):
+        """Usa SQL dinámico en BD (SP_LISTAR_ORDENADO)"""
+        campo = self.cbo_campo.get().strip()
+        direccion = self.cbo_dir.get().strip()
+
+        for x in self.tabla.get_children():
+            self.tabla.delete(x)
+
+        try:
+            datos = self.repo.listar_ordenado(campo, direccion)
+            for v in datos:
+                self.tabla.insert("", "end", values=(
+                    v["id_vehiculo"], v["marca"], v["modelo"], v["anio"],
+                    v["tipo"], v["km"], v["combustible"], v["color"], v["precio"]
+                ))
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo ordenar.\n\nDetalle: {e}")
 
     def guardar(self):
         data = self.validar()
@@ -134,5 +193,5 @@ class VehiculosWindow(tk.Toplevel):
     def limpiar(self, keep_id=False):
         if not keep_id:
             self.id_seleccionado = None
-        for e in (self.marca, self.modelo, self.anio, self.tipo, self.km, self.comb, self.color, self.precio):
+        for e in (self.marca, self.modelo, self.anio, self.tipo, self.km, self.comb, self.color, self.precio, self.descripcion):
             e.delete(0, tk.END)

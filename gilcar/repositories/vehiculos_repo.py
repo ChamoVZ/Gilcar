@@ -12,7 +12,6 @@ class VehiculosRepo:
 
         vehiculos = []
         for r in rows:
-            # Según tu SELECT del paquete, vienen varios campos; para UI usamos los principales.
             vehiculos.append({
                 "id_vehiculo": r[0],
                 "marca": r[1],
@@ -67,3 +66,30 @@ class VehiculosRepo:
             with cn.cursor() as cur:
                 cur.callproc("PKG_VEHICULOS.SP_INACTIVAR", [int(id_vehiculo)])
                 cn.commit()
+
+def listar_ordenado(self, campo: str, direccion: str):
+        """
+        Llama a PKG_VEHICULOS.SP_LISTAR_ORDENADO(campo, direccion, cursor_out)
+        campo: 'PRECIO' | 'ANO_FABRICACION' | 'KILOMETRAJE' | 'MARCA' | 'MODELO'
+        direccion: 'ASC' | 'DESC'
+        """
+        with get_connection() as cn:
+            with cn.cursor() as cur:
+                out_cur = cur.var(oracledb.CURSOR)
+                cur.callproc("PKG_VEHICULOS.SP_LISTAR_ORDENADO", [campo, direccion, out_cur])
+                rows = out_cur.getvalue().fetchall()
+
+        vehiculos = []
+        for r in rows:
+            vehiculos.append({
+                "id_vehiculo": r[0],
+                "marca": r[1],
+                "modelo": r[2],
+                "anio": r[3],
+                "tipo": r[4],
+                "km": r[5],
+                "combustible": r[6],
+                "precio": float(r[7]),
+                "color": r[8],
+            })
+        return vehiculos
